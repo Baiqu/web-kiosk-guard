@@ -89,6 +89,12 @@ Settings live in **`config.ini`** next to the exe:
 | `chrome_path` | Full path to `chrome.exe`; blank = auto-detect | *(blank)* |
 | `user_data_dir` | Isolated profile folder; blank = folder next to exe | *(blank)* |
 | `block_close_keys` | `1` blocks Alt+F4 / Ctrl+W; `0` allows (relaunch still guards) | `1` |
+| `refresh_interval_sec` | Auto-reload the page every N seconds to pick up new content; `0` = never | `1800` (30 min) |
+| `refresh_hard` | `1` = hard refresh (Ctrl+F5, ignore cache); `0` = normal (F5) | `1` |
+
+Auto-refresh sends a reload key to the **same** kiosk window on the interval —
+it never opens or stacks windows. Set `refresh_interval_sec=0` to leave refreshing
+entirely to the website itself.
 
 Requires Google Chrome to be installed on the machine. Source: `ahk/WebKioskGuard.ahk`
 (AutoHotkey v1.1) — CI compiles it to the exe; you can also compile it locally by

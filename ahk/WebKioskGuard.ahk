@@ -27,6 +27,8 @@ IniRead, gPollMs,      %ConfigFile%, kiosk, poll_ms,         1000
 IniRead, gChromePath,  %ConfigFile%, kiosk, chrome_path,     %A_Space%
 IniRead, gUserDataDir, %ConfigFile%, kiosk, user_data_dir,   %A_Space%
 IniRead, gBlockClose,  %ConfigFile%, kiosk, block_close_keys, 1
+IniRead, gRefreshSec,  %ConfigFile%, kiosk, refresh_interval_sec, 1800
+IniRead, gRefreshHard, %ConfigFile%, kiosk, refresh_hard,         1
 
 gUrl := Trim(gUrl)
 gChromePath := Trim(gChromePath)
@@ -42,8 +44,9 @@ if (gChromePath = "" || !FileExist(gChromePath)) {
 }
 
 global gRunning := true
-global gWin := 0    ; HWND of the kiosk Chrome window we manage
-global gPid := 0    ; PID of the Chrome process that owns that window
+global gWin := 0          ; HWND of the kiosk Chrome window we manage
+global gPid := 0          ; PID of the Chrome process that owns that window
+global gLastRefresh := 0  ; A_TickCount of the last auto-refresh (or page open)
 
 ; ---------------- Hotkeys ----------------
 Hotkey, %gExitHotkey%, DoExit
@@ -63,6 +66,7 @@ Loop {
 
     if (gWin && WinExist("ahk_id " . gWin)) {
         WinSet, AlwaysOnTop, On, % "ahk_id " . gWin      ; keep it above everything
+        MaybeRefresh()                                   ; reload on the configured interval
     } else {
         ; Lost the window handle. Re-adopt our process's window if it still has
         ; one; otherwise relaunch ONLY if the process is truly gone (never stack).
@@ -100,7 +104,7 @@ return
 
 ; Launch Chrome once and capture the handle + PID of the window it opens.
 StartKiosk() {
-    global gWin, gPid
+    global gWin, gPid, gLastRefresh
     before := SnapshotChromeWindows()
     LaunchChrome()
     gWin := CaptureNewChromeWindow(before)
@@ -109,6 +113,36 @@ StartKiosk() {
         WinGet, p, PID, % "ahk_id " . gWin
         gPid := p
     }
+    gLastRefresh := A_TickCount   ; count the refresh interval from a fresh page
+}
+
+; Reload the page on the configured interval (send a refresh key to the SAME
+; window — never opens or navigates a new one). 0 = disabled.
+MaybeRefresh() {
+    global gRefreshSec, gLastRefresh
+    if (gRefreshSec <= 0)
+        return
+    delta := A_TickCount - gLastRefresh
+    if (delta < 0) {                       ; A_TickCount wraps ~every 49.7 days
+        gLastRefresh := A_TickCount
+        return
+    }
+    if (delta >= gRefreshSec * 1000) {
+        RefreshKiosk()
+        gLastRefresh := A_TickCount
+    }
+}
+
+RefreshKiosk() {
+    global gWin, gRefreshHard
+    if (!gWin || !WinExist("ahk_id " . gWin))
+        return
+    WinActivate, % "ahk_id " . gWin        ; sending keys needs focus; kiosk is the only window
+    WinWaitActive, % "ahk_id " . gWin, , 2
+    if (gRefreshHard)
+        Send, ^{F5}                        ; Ctrl+F5 = hard reload, ignore cache
+    else
+        Send, {F5}
 }
 
 LaunchChrome() {
