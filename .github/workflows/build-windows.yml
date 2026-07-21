@@ -30,12 +30,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Build standalone exe
-        run: |
-          pyinstaller --onefile --noconsole `
-            --name WebKioskGuard `
-            --collect-all webview `
-            --collect-all clr_loader `
-            src\main.py
+        run: pyinstaller --noconfirm WebKioskGuard.spec
 
       - name: Bundle editable config next to exe
         run: copy config.json dist\config.json

@@ -4,10 +4,7 @@ REM Output: dist\WebKioskGuard.exe  — keep config.json in the SAME folder as t
 setlocal
 cd /d "%~dp0"
 
-pyinstaller --onefile --noconsole ^
-  --name WebKioskGuard ^
-  --collect-all webview ^
-  src\main.py
+pyinstaller --noconfirm WebKioskGuard.spec
 
 if errorlevel 1 (
   echo Build failed.
