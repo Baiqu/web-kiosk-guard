@@ -50,10 +50,11 @@ jobs:
 
       - name: Publish Release (on version tag)
         if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create ${{ github.ref_name }} `
-            dist/WebKioskGuard.exe dist/config.json `
-            --title "${{ github.ref_name }}" `
-            --notes "Windows kiosk guard — download **WebKioskGuard.exe** and double-click to run. To change the URL, put **config.json** in the same folder and edit its `url` (or pass a URL on the command line). Requires the Edge WebView2 Runtime (preinstalled on Win11 / updated Win10)."
+          gh release create "${{ github.ref_name }}" \
+            dist/WebKioskGuard.exe dist/config.json \
+            --title "${{ github.ref_name }}" \
+            --notes "Windows kiosk guard — download WebKioskGuard.exe and double-click to run. To change the URL, put config.json in the same folder and edit its url (or pass a URL on the command line). Requires the Edge WebView2 Runtime (preinstalled on Win11 / updated Win10)."
