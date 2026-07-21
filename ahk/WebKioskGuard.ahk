@@ -3,12 +3,13 @@
 ; What it does:
 ;   * launches Chrome fullscreen (--kiosk) on a configured URL, in an isolated
 ;     profile so it never mixes with the user's normal Chrome windows,
-;   * keeps that window always-on-top so nothing covers it,
-;   * relaunches it automatically if it ever closes/crashes,
+;   * remembers THAT window's handle and keeps it always-on-top,
+;   * relaunches it only if that window actually closes/crashes,
 ;   * blocks the usual close shortcuts (Alt+F4 / Ctrl+W),
 ;   * exits ONLY via a hidden hotkey (default Ctrl+Alt+Shift+Q).
 ;
-; Runs on old Windows (7/8.1) and new alike — no Python, no api-ms-win-* DLLs.
+; Detection is by window handle — no WMI, no page-title dependency — so it does
+; NOT keep reloading the page. Runs on old Windows (7/8.1) and new alike.
 ; Settings live in config.ini next to the exe.
 
 #NoEnv
@@ -40,7 +41,7 @@ if (gChromePath = "" || !FileExist(gChromePath)) {
 }
 
 global gRunning := true
-global gMarker := gUserDataDir   ; unique per-profile dir; identifies OUR Chrome
+global gWin := 0    ; HWND of the kiosk Chrome window we manage
 
 ; ---------------- Hotkeys ----------------
 Hotkey, %gExitHotkey%, DoExit
@@ -52,20 +53,17 @@ if (gBlockClose) {
 }
 
 ; ---------------- Start + guard loop ----------------
-LaunchChrome()
-Sleep, 4000
+StartKiosk()
 
 Loop {
     if (!gRunning)
         break
-    hwnds := GetKioskWindows()
-    if (hwnds.Length() = 0) {
-        LaunchChrome()          ; window gone -> bring it back
-        Sleep, 5000             ; give Chrome time to open before re-checking
-    } else {
-        for i, h in hwnds
-            WinSet, AlwaysOnTop, On, ahk_id %h%
+    if (gWin && WinExist("ahk_id " . gWin)) {
+        WinSet, AlwaysOnTop, On, % "ahk_id " . gWin   ; keep it above everything
         Sleep, %gPollMs%
+    } else {
+        StartKiosk()                                  ; window gone -> bring it back
+        Sleep, 1000
     }
 }
 ExitApp
@@ -74,9 +72,8 @@ ExitApp
 
 DoExit:
     gRunning := false
-    for i, h in GetKioskWindows()
-        WinClose, ahk_id %h%
-    KillKioskChrome()
+    if (gWin && WinExist("ahk_id " . gWin))
+        WinClose, % "ahk_id " . gWin                  ; closing the kiosk window quits that Chrome
     ExitApp
 return
 
@@ -84,6 +81,14 @@ BlockKey:
 return
 
 ; ======================= functions =======================
+
+; Launch Chrome and capture the handle of the NEW window it opens.
+StartKiosk() {
+    global gWin
+    before := SnapshotChromeWindows()
+    LaunchChrome()
+    gWin := CaptureNewChromeWindow(before)
+}
 
 LaunchChrome() {
     global gChromePath, gUrl, gUserDataDir
@@ -95,55 +100,32 @@ LaunchChrome() {
     Run, %cmd%,,, pid
 }
 
-; Return an array of HWNDs for the kiosk Chrome window(s) we launched.
-; Uses WMI to match only chrome.exe processes whose command line contains our
-; unique user-data-dir, so the user's other Chrome windows are ignored.
-GetKioskWindows() {
-    global gMarker
-    hwnds := []
-    pids := {}
-    wmiOk := false
-    try {
-        col := ComObjGet("winmgmts:\\.\root\cimv2").ExecQuery(""
-            . "SELECT ProcessId, CommandLine FROM Win32_Process WHERE Name = 'chrome.exe'")
-        wmiOk := true
-        for proc in col {
-            cl := proc.CommandLine
-            if (cl != "" && InStr(cl, gMarker))
-                pids[proc.ProcessId + 0] := true
-        }
-    } catch e {
-        wmiOk := false
-    }
-
+; Snapshot the HWNDs of the currently-visible Chrome windows (so we can tell
+; which one is newly created by our launch, and never touch the user's Chrome).
+SnapshotChromeWindows() {
+    snap := {}
     WinGet, list, List, ahk_class Chrome_WidgetWin_1
     Loop, %list% {
-        h := list%A_Index%
-        WinGetTitle, t, ahk_id %h%
-        if (t = "")
-            continue
-        WinGet, pid, PID, ahk_id %h%
-        if (wmiOk) {
-            if (pids.HasKey(pid + 0))
-                hwnds.Push(h)
-        } else {
-            ; WMI unavailable: best-effort, accept any titled Chrome window.
-            hwnds.Push(h)
-        }
+        snap[list%A_Index% + 0] := true
     }
-    return hwnds
+    return snap
 }
 
-KillKioskChrome() {
-    global gMarker
-    try {
-        for proc in ComObjGet("winmgmts:\\.\root\cimv2").ExecQuery(""
-            . "SELECT ProcessId, CommandLine FROM Win32_Process WHERE Name = 'chrome.exe'") {
-            if (proc.CommandLine != "" && InStr(proc.CommandLine, gMarker))
-                proc.Terminate()
+; Wait for a real Chrome window that wasn't in `before` and return its HWND.
+CaptureNewChromeWindow(before) {
+    Loop, 80 {                         ; up to ~20s
+        WinGet, list, List, ahk_class Chrome_WidgetWin_1
+        Loop, %list% {
+            h := list%A_Index%
+            if (before.HasKey(h + 0))
+                continue
+            WinGetPos,,, w, ht, ahk_id %h%
+            if (w > 100 && ht > 100)   ; skip tiny helper windows
+                return h
         }
-    } catch e {
+        Sleep, 250
     }
+    return 0
 }
 
 DetectChrome() {
