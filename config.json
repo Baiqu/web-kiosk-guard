@@ -1,0 +1,9 @@
+{
+  "url": "https://example.com",
+  "title": "Web Kiosk Guard",
+  "fullscreen": true,
+  "frameless": true,
+  "exit_hotkey": "ctrl+alt+shift+q",
+  "topmost_interval_sec": 1.0,
+  "auto_restart_on_crash": true
+}
