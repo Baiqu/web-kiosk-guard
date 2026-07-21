@@ -91,10 +91,27 @@ Settings live in **`config.ini`** next to the exe:
 | `block_close_keys` | `1` blocks Alt+F4 / Ctrl+W; `0` allows (relaunch still guards) | `1` |
 | `refresh_interval_sec` | Auto-reload the page every N seconds to pick up new content; `0` = never | `1800` (30 min) |
 | `refresh_hard` | `1` = hard refresh (Ctrl+F5, ignore cache); `0` = normal (F5) | `1` |
+| `hide_cursor` | `1` hides the mouse cursor while running (restored on exit); `0` shows it | `1` |
+| `auto_update` | `1` self-updates from GitHub Releases; `0` off | `1` |
+| `update_interval_sec` | How often to check for a new version (also at startup) | `86400` (daily) |
 
 Auto-refresh sends a reload key to the **same** kiosk window on the interval —
 it never opens or stacks windows. Set `refresh_interval_sec=0` to leave refreshing
 entirely to the website itself.
+
+**Hide cursor** replaces every system cursor with a transparent one while the
+kiosk runs, so the pointer is invisible even if the mouse is bumped; it is
+restored automatically on exit.
+
+**Auto-update** downloads the latest `WebKioskGuardAHK.exe` from the Releases
+page, and if it differs from the running one, swaps it in and restarts (writing a
+`last-update.txt` next to the exe). Requirements/notes:
+
+- Keep the exe in a **writable folder** (Desktop, Downloads, etc. — *not* Program
+  Files), or the in-place swap can't complete.
+- The auto-start shortcut points at a fixed path, which doesn't change on update.
+- On very old Windows 7 the download needs TLS 1.2 (the app requests it); if the
+  machine still can't, set `auto_update=0` and update manually.
 
 Requires Google Chrome to be installed on the machine. Source: `ahk/WebKioskGuard.ahk`
 (AutoHotkey v1.1) — CI compiles it to the exe; you can also compile it locally by
