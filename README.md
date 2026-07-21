@@ -94,6 +94,22 @@ Requires Google Chrome to be installed on the machine. Source: `ahk/WebKioskGuar
 (AutoHotkey v1.1) — CI compiles it to the exe; you can also compile it locally by
 installing AutoHotkey and right-clicking → *Compile Script*.
 
+### Start automatically at login
+
+Easiest (no admin, works on all Windows including 7/8.1): keep
+**`install-autostart.bat`** in the same folder as `WebKioskGuardAHK.exe` and
+double-click it. It drops a shortcut in your Startup folder, so the guard starts
+every time you log in. **`uninstall-autostart.bat`** removes it.
+
+Manual equivalent: press `Win+R`, type `shell:startup`, and put a shortcut to
+`WebKioskGuardAHK.exe` in the folder that opens.
+
+For an always-on kiosk you usually also enable **auto-login** for the machine's
+user (so it reaches the desktop and launches the guard without anyone signing
+in). For extra robustness (relaunch if it ever exits, start at boot) use **Task
+Scheduler** → *Create Task* → trigger *At log on*, action = the exe, and tick
+*Run with highest privileges*.
+
 ## Build a standalone `.exe` (no Python on the target machine)
 
 ```bat

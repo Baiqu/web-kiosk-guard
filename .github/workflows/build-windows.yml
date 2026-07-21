@@ -60,11 +60,13 @@ jobs:
           Write-Host "AHK exe built OK"
 
       # ---------- Stage configs next to the exes ----------
-      - name: Stage configs
+      - name: Stage configs and helpers
         shell: pwsh
         run: |
           Copy-Item config.json dist\config.json -Force
           Copy-Item ahk\config.ini dist\config.ini -Force
+          Copy-Item ahk\install-autostart.bat dist\install-autostart.bat -Force
+          Copy-Item ahk\uninstall-autostart.bat dist\uninstall-autostart.bat -Force
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -75,6 +77,8 @@ jobs:
             dist/WebKioskGuardAHK.exe
             dist/config.json
             dist/config.ini
+            dist/install-autostart.bat
+            dist/uninstall-autostart.bat
 
       - name: Publish Release (on version tag)
         if: startsWith(github.ref, 'refs/tags/v')
@@ -84,8 +88,11 @@ jobs:
         run: |
           gh release create "${{ github.ref_name }}" \
             dist/WebKioskGuardAHK.exe dist/config.ini \
+            dist/install-autostart.bat dist/uninstall-autostart.bat \
             dist/WebKioskGuard.exe dist/config.json \
             --title "${{ github.ref_name }}" \
             --notes "Two builds:
           - **WebKioskGuardAHK.exe** — guards the Chrome already installed on the machine; runs on old Windows (7/8.1) too. Put config.ini beside it and set the url. Recommended if WebKioskGuard.exe reports a missing api-ms-win-*.dll.
-          - **WebKioskGuard.exe** — self-contained embedded WebView2 window; needs Windows 10/11 with the Edge WebView2 Runtime. Put config.json beside it to set the url."
+          - **WebKioskGuard.exe** — self-contained embedded WebView2 window; needs Windows 10/11 with the Edge WebView2 Runtime. Put config.json beside it to set the url.
+
+          Auto-start at login: keep **install-autostart.bat** in the same folder as the exe and double-click it (uninstall-autostart.bat removes it)."
