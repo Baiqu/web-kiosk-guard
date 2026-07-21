@@ -32,6 +32,7 @@ IniRead, gRefreshHard, %ConfigFile%, kiosk, refresh_hard,         1
 IniRead, gHideCursor,  %ConfigFile%, kiosk, hide_cursor,          1
 IniRead, gAutoUpdate,  %ConfigFile%, kiosk, auto_update,          1
 IniRead, gUpdateSec,   %ConfigFile%, kiosk, update_interval_sec,  86400
+IniRead, gKeepAwake,   %ConfigFile%, kiosk, keep_awake,           1
 
 global gUpdateUrl := "https://github.com/Baiqu/web-kiosk-guard/releases/latest/download/WebKioskGuardAHK.exe"
 
@@ -72,6 +73,8 @@ if (gBlockClose) {
 
 ; ---------------- Start + guard loop ----------------
 StartKiosk()
+if (gKeepAwake)
+    KeepAwake()        ; keep the screen on / system awake while the kiosk runs
 gLastUpdate := A_TickCount
 CheckUpdate()          ; check once at startup (page is already showing)
 
@@ -79,6 +82,8 @@ Loop {
     if (!gRunning)
         break
 
+    if (gKeepAwake)
+        KeepAwake()                                      ; re-assert every tick (cheap)
     MaybeUpdate()                                        ; self-upgrade on the configured interval
 
     if (gWin && WinExist("ahk_id " . gWin)) {
@@ -256,9 +261,18 @@ DetectChrome() {
 ; Restore the real system cursor on any exit so we never leave the machine
 ; cursorless (hidden hotkey, update-restart, or normal close all pass here).
 OnExitHandler(ExitReason, ExitCode) {
-    global gHideCursor
+    global gHideCursor, gKeepAwake
     if (gHideCursor)
         SystemCursor(true)
+    if (gKeepAwake)
+        DllCall("SetThreadExecutionState", "uint", 0x80000000)  ; ES_CONTINUOUS: release
+}
+
+; Tell Windows the display + system are in use, so the screen won't turn off and
+; the machine won't sleep while the kiosk runs. ES_CONTINUOUS keeps it in effect.
+KeepAwake() {
+    ; ES_CONTINUOUS(0x80000000)|ES_SYSTEM_REQUIRED(0x1)|ES_DISPLAY_REQUIRED(0x2)
+    DllCall("SetThreadExecutionState", "uint", 0x80000003)
 }
 
 ; Hide (show=false) or restore (show=true) the entire system cursor.

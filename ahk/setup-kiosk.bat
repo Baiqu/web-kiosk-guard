@@ -49,6 +49,14 @@ reg delete "%WL%" /v AutoLogonCount /f >nul 2>&1
 echo   OK: auto-login enabled for %TARGETUSER% on %COMPUTERNAME%
 
 echo.
+echo === Extra: never turn off the screen / sleep ===
+powercfg /change monitor-timeout-ac 0 >nul 2>&1
+powercfg /change monitor-timeout-dc 0 >nul 2>&1
+powercfg /change standby-timeout-ac 0 >nul 2>&1
+powercfg /change standby-timeout-dc 0 >nul 2>&1
+echo   OK: display and sleep timeouts set to Never (the app also keeps the screen on).
+
+echo.
 echo All done. Reboot to test:
 echo   PC should log in by itself, then the kiosk should launch automatically.
 echo   (Exit the kiosk any time with the hidden hotkey Ctrl+Alt+Shift+Q.)

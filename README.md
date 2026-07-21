@@ -94,6 +94,7 @@ Settings live in **`config.ini`** next to the exe:
 | `hide_cursor` | `1` hides the mouse cursor while running (restored on exit); `0` shows it | `1` |
 | `auto_update` | `1` self-updates from GitHub Releases; `0` off | `1` |
 | `update_interval_sec` | How often to check for a new version (also at startup) | `86400` (daily) |
+| `keep_awake` | `1` keeps the screen on / stops the PC sleeping while running; `0` off | `1` |
 
 Auto-refresh sends a reload key to the **same** kiosk window on the interval —
 it never opens or stacks windows. Set `refresh_interval_sec=0` to leave refreshing
@@ -112,6 +113,12 @@ page, and if it differs from the running one, swaps it in and restarts (writing 
 - The auto-start shortcut points at a fixed path, which doesn't change on update.
 - On very old Windows 7 the download needs TLS 1.2 (the app requests it); if the
   machine still can't, set `auto_update=0` and update manually.
+
+**Keep awake** (`keep_awake=1`) tells Windows the display and system are in use
+(`SetThreadExecutionState`) while the kiosk runs, so the screen won't turn off and
+the PC won't sleep — without changing any system power setting, and released
+automatically on exit. `setup-kiosk.bat` additionally sets the system's
+screen/sleep timeouts to *Never* as a belt-and-braces backup.
 
 Requires Google Chrome to be installed on the machine. Source: `ahk/WebKioskGuard.ahk`
 (AutoHotkey v1.1) — CI compiles it to the exe; you can also compile it locally by
