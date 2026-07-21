@@ -1,0 +1,44 @@
+name: Build Windows exe
+
+# Builds dist/WebKioskGuard.exe on a real Windows runner and uploads it as an
+# artifact you can download from the Actions run — no local Python/Windows dev
+# setup needed. Runs on every push to main and on manual dispatch.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build standalone exe
+        run: |
+          pyinstaller --onefile --noconsole `
+            --name WebKioskGuard `
+            --collect-all webview `
+            --collect-all clr_loader `
+            src\main.py
+
+      - name: Bundle editable config next to exe
+        run: copy config.json dist\config.json
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WebKioskGuard-windows
+          path: |
+            dist/WebKioskGuard.exe
+            dist/config.json
