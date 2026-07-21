@@ -1,13 +1,18 @@
 name: Build Windows exe
 
-# Builds dist/WebKioskGuard.exe on a real Windows runner and uploads it as an
-# artifact you can download from the Actions run — no local Python/Windows dev
-# setup needed. Runs on every push to main and on manual dispatch.
+# On every push to main: build dist/WebKioskGuard.exe on a real Windows runner
+# and upload it as a downloadable Actions artifact.
+# On a version tag (v*): additionally publish a GitHub Release with the exe
+# attached, giving a stable public download link (.../releases/latest).
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
+
+permissions:
+  contents: write  # needed to create Releases
 
 jobs:
   build:
@@ -42,3 +47,13 @@ jobs:
           path: |
             dist/WebKioskGuard.exe
             dist/config.json
+
+      - name: Publish Release (on version tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create ${{ github.ref_name }} `
+            dist/WebKioskGuard.exe dist/config.json `
+            --title "${{ github.ref_name }}" `
+            --notes "Windows kiosk guard — download **WebKioskGuard.exe** and double-click to run. To change the URL, put **config.json** in the same folder and edit its `url` (or pass a URL on the command line). Requires the Edge WebView2 Runtime (preinstalled on Win11 / updated Win10)."

@@ -15,6 +15,16 @@ window (Edge **WebView2** engine) and **guards** it:
 
 ---
 
+## ⬇️ Download (Windows, no install)
+
+**[Download the latest WebKioskGuard.exe →](https://github.com/Baiqu/web-kiosk-guard/releases/latest)**
+
+Open that page on the Windows machine, download `WebKioskGuard.exe`, and
+**double-click it** — no Python, no installer. To point it at your own page,
+put `config.json` (also on the release) in the same folder and edit its `url`.
+
+---
+
 ## Requirements
 
 - Windows 10 (updated) or Windows 11.
