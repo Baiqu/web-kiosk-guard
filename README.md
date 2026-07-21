@@ -17,11 +17,20 @@ window (Edge **WebView2** engine) and **guards** it:
 
 ## ⬇️ Download (Windows, no install)
 
-**[Download the latest WebKioskGuard.exe →](https://github.com/Baiqu/web-kiosk-guard/releases/latest)**
+**[Open the latest release →](https://github.com/Baiqu/web-kiosk-guard/releases/latest)** — there are two builds; pick one:
 
-Open that page on the Windows machine, download `WebKioskGuard.exe`, and
-**double-click it** — no Python, no installer. To point it at your own page,
-put `config.json` (also on the release) in the same folder and edit its `url`.
+| Build | Use when | Notes |
+|-------|----------|-------|
+| **`WebKioskGuardAHK.exe`** | Older Windows (7 / 8.1), or the other exe reports a missing `api-ms-win-*.dll` | Guards the **Chrome already installed** on the machine. Put `config.ini` beside it and set `url`. No Python, no WebView2. |
+| **`WebKioskGuard.exe`** | Windows 10 / 11 | Self-contained **embedded WebView2** window. Put `config.json` beside it and set `url`. Needs the Edge WebView2 Runtime. |
+
+Both are single exes — download, keep the matching config file in the same
+folder, double-click. No installer.
+
+> **Which one?** If double-clicking `WebKioskGuard.exe` pops up
+> *"api-ms-win-core-path-l1-1-0.dll is missing"*, that machine is older than a
+> normal Windows 10 and cannot run the WebView2 build — use
+> **`WebKioskGuardAHK.exe`** instead.
 
 ---
 
@@ -57,6 +66,33 @@ run.bat https://your.dashboard/page
 | `exit_hotkey` | Hidden combo that exits the app | `ctrl+alt+shift+q` |
 | `topmost_interval_sec` | How often to re-assert always-on-top | `1.0` |
 | `auto_restart_on_crash` | Relaunch if the process dies unexpectedly | `true` |
+
+## AutoHotkey build — guard the installed Chrome (`WebKioskGuardAHK.exe`)
+
+For machines that can't run the WebView2 build (old Windows, or the
+`api-ms-win-*.dll` error), this build drives the **Chrome already installed** on
+the machine instead of embedding a browser:
+
+- launches Chrome fullscreen (`--kiosk`) on your URL, in an **isolated profile**
+  so it never mixes with normal Chrome windows,
+- keeps that window **always-on-top**, and **relaunches** it if it closes/crashes,
+- **blocks** `Alt+F4` / `Ctrl+W`,
+- exits only on the hidden hotkey (default `Ctrl+Alt+Shift+Q`).
+
+Settings live in **`config.ini`** next to the exe:
+
+| Key | Meaning | Default |
+|-----|---------|---------|
+| `url` | Page to open | `https://example.com` |
+| `exit_hotkey` | Hidden exit combo (`^`=Ctrl `!`=Alt `+`=Shift `#`=Win) | `^!+q` |
+| `poll_ms` | Re-assert-topmost / alive-check interval (ms) | `1000` |
+| `chrome_path` | Full path to `chrome.exe`; blank = auto-detect | *(blank)* |
+| `user_data_dir` | Isolated profile folder; blank = folder next to exe | *(blank)* |
+| `block_close_keys` | `1` blocks Alt+F4 / Ctrl+W; `0` allows (relaunch still guards) | `1` |
+
+Requires Google Chrome to be installed on the machine. Source: `ahk/WebKioskGuard.ahk`
+(AutoHotkey v1.1) — CI compiles it to the exe; you can also compile it locally by
+installing AutoHotkey and right-clicking → *Compile Script*.
 
 ## Build a standalone `.exe` (no Python on the target machine)
 
