@@ -3,13 +3,14 @@
 ; What it does:
 ;   * launches Chrome fullscreen (--kiosk) on a configured URL, in an isolated
 ;     profile so it never mixes with the user's normal Chrome windows,
-;   * remembers THAT window's handle and keeps it always-on-top,
-;   * relaunches it only if that window actually closes/crashes,
+;   * keeps that window always-on-top,
+;   * relaunches it ONLY when our Chrome process has actually exited — so it can
+;     never stack up extra windows,
 ;   * blocks the usual close shortcuts (Alt+F4 / Ctrl+W),
 ;   * exits ONLY via a hidden hotkey (default Ctrl+Alt+Shift+Q).
 ;
-; Detection is by window handle — no WMI, no page-title dependency — so it does
-; NOT keep reloading the page. Runs on old Windows (7/8.1) and new alike.
+; Liveness is checked by process (Process,Exist) + window handle — no WMI, no
+; page-title dependency. Runs on old Windows (7/8.1) and new alike.
 ; Settings live in config.ini next to the exe.
 
 #NoEnv
@@ -42,6 +43,7 @@ if (gChromePath = "" || !FileExist(gChromePath)) {
 
 global gRunning := true
 global gWin := 0    ; HWND of the kiosk Chrome window we manage
+global gPid := 0    ; PID of the Chrome process that owns that window
 
 ; ---------------- Hotkeys ----------------
 Hotkey, %gExitHotkey%, DoExit
@@ -58,13 +60,22 @@ StartKiosk()
 Loop {
     if (!gRunning)
         break
+
     if (gWin && WinExist("ahk_id " . gWin)) {
-        WinSet, AlwaysOnTop, On, % "ahk_id " . gWin   ; keep it above everything
-        Sleep, %gPollMs%
+        WinSet, AlwaysOnTop, On, % "ahk_id " . gWin      ; keep it above everything
     } else {
-        StartKiosk()                                  ; window gone -> bring it back
-        Sleep, 1000
+        ; Lost the window handle. Re-adopt our process's window if it still has
+        ; one; otherwise relaunch ONLY if the process is truly gone (never stack).
+        h := FindWindowByPid(gPid)
+        if (h) {
+            gWin := h
+            WinSet, AlwaysOnTop, On, % "ahk_id " . gWin
+        } else if (!ProcAlive(gPid)) {
+            StartKiosk()
+        }
+        ; else: process alive but no window yet -> wait, do NOT relaunch
     }
+    Sleep, %gPollMs%
 }
 ExitApp
 
@@ -73,7 +84,12 @@ ExitApp
 DoExit:
     gRunning := false
     if (gWin && WinExist("ahk_id " . gWin))
-        WinClose, % "ahk_id " . gWin                  ; closing the kiosk window quits that Chrome
+        WinClose, % "ahk_id " . gWin
+    else if (gPid) {
+        h := FindWindowByPid(gPid)
+        if (h)
+            WinClose, % "ahk_id " . h
+    }
     ExitApp
 return
 
@@ -82,26 +98,34 @@ return
 
 ; ======================= functions =======================
 
-; Launch Chrome and capture the handle of the NEW window it opens.
+; Launch Chrome once and capture the handle + PID of the window it opens.
 StartKiosk() {
-    global gWin
+    global gWin, gPid
     before := SnapshotChromeWindows()
     LaunchChrome()
     gWin := CaptureNewChromeWindow(before)
+    gPid := 0
+    if (gWin) {
+        WinGet, p, PID, % "ahk_id " . gWin
+        gPid := p
+    }
 }
 
 LaunchChrome() {
     global gChromePath, gUrl, gUserDataDir
     q := Chr(34)   ; double-quote
-    flags := "--kiosk --new-window --no-first-run --no-default-browser-check "
+    ; NOTE: no --new-window; a fresh isolated profile opens one window on its
+    ; own, and omitting it means an accidental double-launch can't spawn a
+    ; second kiosk window.
+    flags := "--kiosk --no-first-run --no-default-browser-check "
            . "--disable-session-crashed-bubble --disable-infobars "
            . "--disable-features=TranslateUI --overscroll-history-navigation=0"
     cmd := q gChromePath q " " flags " --user-data-dir=" q gUserDataDir q " " q gUrl q
     Run, %cmd%,,, pid
 }
 
-; Snapshot the HWNDs of the currently-visible Chrome windows (so we can tell
-; which one is newly created by our launch, and never touch the user's Chrome).
+; Snapshot HWNDs of currently-visible Chrome windows, so the freshly-opened one
+; can be told apart and the user's own Chrome is never touched.
 SnapshotChromeWindows() {
     snap := {}
     WinGet, list, List, ahk_class Chrome_WidgetWin_1
@@ -126,6 +150,30 @@ CaptureNewChromeWindow(before) {
         Sleep, 250
     }
     return 0
+}
+
+; Find a real visible Chrome window owned by process `pid`.
+FindWindowByPid(pid) {
+    if (!pid)
+        return 0
+    WinGet, list, List, ahk_class Chrome_WidgetWin_1
+    Loop, %list% {
+        h := list%A_Index%
+        WinGet, wpid, PID, ahk_id %h%
+        if (wpid = pid) {
+            WinGetPos,,, w, ht, ahk_id %h%
+            if (w > 100 && ht > 100)
+                return h
+        }
+    }
+    return 0
+}
+
+ProcAlive(pid) {
+    if (!pid)
+        return false
+    Process, Exist, %pid%
+    return (ErrorLevel != 0)
 }
 
 DetectChrome() {
