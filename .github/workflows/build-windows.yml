@@ -67,6 +67,8 @@ jobs:
           Copy-Item ahk\config.ini dist\config.ini -Force
           Copy-Item ahk\install-autostart.bat dist\install-autostart.bat -Force
           Copy-Item ahk\uninstall-autostart.bat dist\uninstall-autostart.bat -Force
+          Copy-Item ahk\setup-kiosk.bat dist\setup-kiosk.bat -Force
+          Copy-Item ahk\undo-kiosk.bat dist\undo-kiosk.bat -Force
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -79,6 +81,8 @@ jobs:
             dist/config.ini
             dist/install-autostart.bat
             dist/uninstall-autostart.bat
+            dist/setup-kiosk.bat
+            dist/undo-kiosk.bat
 
       - name: Publish Release (on version tag)
         if: startsWith(github.ref, 'refs/tags/v')
@@ -88,6 +92,7 @@ jobs:
         run: |
           gh release create "${{ github.ref_name }}" \
             dist/WebKioskGuardAHK.exe dist/config.ini \
+            dist/setup-kiosk.bat dist/undo-kiosk.bat \
             dist/install-autostart.bat dist/uninstall-autostart.bat \
             dist/WebKioskGuard.exe dist/config.json \
             --title "${{ github.ref_name }}" \

@@ -104,11 +104,27 @@ every time you log in. **`uninstall-autostart.bat`** removes it.
 Manual equivalent: press `Win+R`, type `shell:startup`, and put a shortcut to
 `WebKioskGuardAHK.exe` in the folder that opens.
 
-For an always-on kiosk you usually also enable **auto-login** for the machine's
-user (so it reaches the desktop and launches the guard without anyone signing
-in). For extra robustness (relaunch if it ever exits, start at boot) use **Task
-Scheduler** → *Create Task* → trigger *At log on*, action = the exe, and tick
-*Run with highest privileges*.
+### Full unattended kiosk — auto-login + auto-start in one click
+
+If the machine's account **has no password**, run **`setup-kiosk.bat`** (keep it
+in the same folder as the exe; it asks for administrator rights). It does both at
+once:
+
+1. adds the login auto-start shortcut, and
+2. enables Windows **auto-login** for the current account (no password).
+
+After that, a **reboot** goes straight to the desktop and launches the kiosk on
+its own — fully unattended. **`undo-kiosk.bat`** reverses both changes.
+
+> ⚠️ Auto-login means anyone who powers on the machine is signed into that
+> account with no password prompt. Only enable it on a physically controlled
+> kiosk/signage machine. `setup-kiosk.bat` assumes the account has no password;
+> if it has one, use the classic `netplwiz` dialog (or Sysinternals *Autologon*)
+> instead so the password can be stored securely.
+
+For extra robustness (relaunch if it ever exits, or start before login) you can
+instead use **Task Scheduler** → *Create Task* → trigger *At log on*, action =
+the exe, *Run with highest privileges*.
 
 ## Build a standalone `.exe` (no Python on the target machine)
 
