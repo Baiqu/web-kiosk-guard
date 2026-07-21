@@ -47,8 +47,17 @@ jobs:
           $zip = "AutoHotkey_$ver.zip"
           Invoke-WebRequest "https://github.com/AutoHotkey/AutoHotkey/releases/download/v$ver/$zip" -OutFile $zip
           Expand-Archive $zip -DestinationPath ahk_tool -Force
-          & "ahk_tool\Compiler\Ahk2Exe.exe" /in "ahk\WebKioskGuard.ahk" /out "dist\WebKioskGuardAHK.exe" /base "ahk_tool\AutoHotkeyU32.exe"
-          if (!(Test-Path "dist\WebKioskGuardAHK.exe")) { throw "AHK compile failed" }
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $ahkArgs = @('/in','ahk\WebKioskGuard.ahk','/out','dist\WebKioskGuardAHK.exe','/base','ahk_tool\AutoHotkeyU32.exe')
+          $p = Start-Process -FilePath "ahk_tool\Compiler\Ahk2Exe.exe" -ArgumentList $ahkArgs -Wait -PassThru -NoNewWindow
+          # Ahk2Exe finishes writing the output slightly after it exits; poll for it.
+          $ok = $false
+          for ($i = 0; $i -lt 30; $i++) {
+            if (Test-Path "dist\WebKioskGuardAHK.exe") { $ok = $true; break }
+            Start-Sleep -Milliseconds 500
+          }
+          if (-not $ok) { throw "AHK compile failed (exit $($p.ExitCode))" }
+          Write-Host "AHK exe built OK"
 
       # ---------- Stage configs next to the exes ----------
       - name: Stage configs
